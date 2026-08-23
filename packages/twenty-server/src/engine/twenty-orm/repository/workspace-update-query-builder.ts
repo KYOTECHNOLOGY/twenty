@@ -38,6 +38,11 @@ import { formatData } from 'src/engine/twenty-orm/utils/format-data.util';
 import { formatResult } from 'src/engine/twenty-orm/utils/format-result.util';
 import { formatTwentyOrmEventToDatabaseBatchEvent } from 'src/engine/twenty-orm/utils/format-twenty-orm-event-to-database-batch-event.util';
 import { getObjectMetadataFromEntityTarget } from 'src/engine/twenty-orm/utils/get-object-metadata-from-entity-target.util';
+import {
+  getUpdateEventRecords,
+  mergeRecordsWithUpdateValues,
+  mergeRecordWithUpdateValues,
+} from 'src/engine/twenty-orm/utils/merge-records-with-update-values.util';
 import { validateRLSPredicatesForRecords } from 'src/engine/twenty-orm/utils/validate-rls-predicates-for-records.util';
 import { computeObjectTargetTable } from 'src/engine/utils/compute-object-target-table.util';
 
@@ -101,19 +106,47 @@ export class WorkspaceUpdateQueryBuilder<
     return workspaceUpdateQueryBuilder;
   }
 
-  override async execute(): Promise<UpdateResult> {
-    try {
-      if (this.manyInputs) {
-        return this.executeMany();
-      }
+  private validateQueryPermissionsOrThrow(): void {
+    validateQueryIsPermittedOrThrow({
+      expressionMap: this.expressionMap,
+      objectsPermissions: this.objectRecordsPermissions,
+      flatObjectMetadataMaps: this.internalContext.flatObjectMetadataMaps,
+      flatFieldMetadataMaps: this.internalContext.flatFieldMetadataMaps,
+      objectIdByNameSingular: this.internalContext.objectIdByNameSingular,
+      shouldBypassPermissionChecks: this.shouldBypassPermissionChecks,
+      authContext: this.authContext,
+    });
+  }
+
+  private validateManyInputsPermissionsOrThrow(): void {
+    for (const input of this.manyInputs) {
+      const fakeExpressionMapToValidatePermissions = Object.assign(
+        {},
+        this.expressionMap,
+        {
+          wheres: input.criteria,
+          valuesSet: input.partialEntity,
+        },
+      );
+
       validateQueryIsPermittedOrThrow({
-        expressionMap: this.expressionMap,
+        expressionMap: fakeExpressionMapToValidatePermissions,
         objectsPermissions: this.objectRecordsPermissions,
         flatObjectMetadataMaps: this.internalContext.flatObjectMetadataMaps,
         flatFieldMetadataMaps: this.internalContext.flatFieldMetadataMaps,
         objectIdByNameSingular: this.internalContext.objectIdByNameSingular,
         shouldBypassPermissionChecks: this.shouldBypassPermissionChecks,
+        authContext: this.authContext,
       });
+    }
+  }
+
+  override async execute(): Promise<UpdateResult> {
+    try {
+      if (this.manyInputs) {
+        return this.executeMany();
+      }
+      this.validateQueryPermissionsOrThrow();
 
       const mainAliasTarget = this.getMainAliasTarget();
 
@@ -133,9 +166,11 @@ export class WorkspaceUpdateQueryBuilder<
 
       const tableName = computeObjectTargetTable(objectMetadata);
 
-      const before = await eventSelectQueryBuilder.getMany({
-        noFormatting: true,
-      });
+      const before = structuredClone(
+        await eventSelectQueryBuilder.getMany({
+          noFormatting: true,
+        }),
+      );
 
       if (before.length > QUERY_MAX_RECORDS) {
         throw new TwentyORMException(
@@ -163,7 +198,7 @@ export class WorkspaceUpdateQueryBuilder<
       );
 
       const formattedBefore = formatResult<T[]>(
-        before,
+        structuredClone(before),
         objectMetadata,
         this.internalContext.flatObjectMetadataMaps,
         this.internalContext.flatFieldMetadataMaps,
@@ -210,19 +245,16 @@ export class WorkspaceUpdateQueryBuilder<
 
         this.expressionMap.valuesSet =
           updatedValues.length === 1 ? updatedValues[0] : updatedValues;
+
+        this.validateQueryPermissionsOrThrow();
       }
 
       this.applyRowLevelPermissionPredicates();
 
       const valuesSet = this.expressionMap.valuesSet ?? {};
-      const updatedRecords: T[] = before.map(
-        (record, index) =>
-          ({
-            ...record,
-            ...(Array.isArray(valuesSet)
-              ? (valuesSet[index] ?? valuesSet[0] ?? {})
-              : valuesSet),
-          }) as T,
+      const updatedRecords = mergeRecordsWithUpdateValues(
+        structuredClone(before),
+        valuesSet,
       );
 
       this.validateRLSPredicatesForUpdate({
@@ -240,7 +272,10 @@ export class WorkspaceUpdateQueryBuilder<
       });
 
       const formattedAfter = formatResult<T[]>(
-        after,
+        mergeRecordsWithUpdateValues(
+          structuredClone(getUpdateEventRecords(before, after)),
+          valuesSet,
+        ),
         objectMetadata,
         this.internalContext.flatObjectMetadataMaps,
         this.internalContext.flatFieldMetadataMaps,
@@ -299,25 +334,7 @@ export class WorkspaceUpdateQueryBuilder<
 
   public async executeMany(): Promise<UpdateResult> {
     try {
-      for (const input of this.manyInputs) {
-        const fakeExpressionMapToValidatePermissions = Object.assign(
-          {},
-          this.expressionMap,
-          {
-            wheres: input.criteria,
-            valuesSet: input.partialEntity,
-          },
-        );
-
-        validateQueryIsPermittedOrThrow({
-          expressionMap: fakeExpressionMapToValidatePermissions,
-          objectsPermissions: this.objectRecordsPermissions,
-          flatObjectMetadataMaps: this.internalContext.flatObjectMetadataMaps,
-          flatFieldMetadataMaps: this.internalContext.flatFieldMetadataMaps,
-          objectIdByNameSingular: this.internalContext.objectIdByNameSingular,
-          shouldBypassPermissionChecks: this.shouldBypassPermissionChecks,
-        });
-      }
+      this.validateManyInputsPermissionsOrThrow();
 
       const mainAliasTarget = this.getMainAliasTarget();
 
@@ -339,12 +356,14 @@ export class WorkspaceUpdateQueryBuilder<
         this.manyInputs.map((input) => input.criteria),
       );
 
-      const beforeRecords = await eventSelectQueryBuilder.getMany({
-        noFormatting: true,
-      });
+      const beforeRecords = structuredClone(
+        await eventSelectQueryBuilder.getMany({
+          noFormatting: true,
+        }),
+      );
 
       const formattedBefore = formatResult<T[]>(
-        beforeRecords,
+        structuredClone(beforeRecords),
         objectMetadata,
         this.internalContext.flatObjectMetadataMaps,
         this.internalContext.flatFieldMetadataMaps,
@@ -411,6 +430,8 @@ export class WorkspaceUpdateQueryBuilder<
           criteria: this.manyInputs[index].criteria,
           partialEntity: updatedValue,
         }));
+
+        this.validateManyInputsPermissionsOrThrow();
       }
 
       const beforeRecordById = new Map<string, T>();
@@ -430,10 +451,10 @@ export class WorkspaceUpdateQueryBuilder<
         const beforeRecord = beforeRecordById.get(input.criteria);
         const updatedRecords = beforeRecord
           ? [
-              {
-                ...beforeRecord,
-                ...input.partialEntity,
-              } as T,
+              mergeRecordWithUpdateValues(
+                structuredClone(beforeRecord),
+                input.partialEntity,
+              ),
             ]
           : [];
 
@@ -454,8 +475,20 @@ export class WorkspaceUpdateQueryBuilder<
         noFormatting: true,
       });
 
+      const updateValuesByRecordId = new Map(
+        this.manyInputs.map(({ criteria, partialEntity }) => [
+          criteria,
+          partialEntity,
+        ]),
+      );
+
       const formattedAfter = formatResult<T[]>(
-        afterRecords,
+        getUpdateEventRecords(beforeRecords, afterRecords).map((record) =>
+          mergeRecordWithUpdateValues(
+            structuredClone(record),
+            updateValuesByRecordId.get(record.id),
+          ),
+        ),
         objectMetadata,
         this.internalContext.flatObjectMetadataMaps,
         this.internalContext.flatFieldMetadataMaps,

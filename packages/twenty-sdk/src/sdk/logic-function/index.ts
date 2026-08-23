@@ -45,7 +45,9 @@ export type { RoutePayload } from '@/sdk/define/logic-functions/triggers/route-p
 
 export {
   jsonSchemaToInputSchema,
+  RetryableLogicFunctionError,
   type InputJsonSchema,
+  type LogicFunctionExecutionContext,
 } from 'twenty-shared/logic-function';
 
 export { getConnection } from '@/sdk/logic-function/connections/get-connection';
@@ -64,6 +66,12 @@ export type {
   EnqueueJobOptions,
   EnqueueJobResult,
 } from 'twenty-shared/application';
+
+export { createTimelineActivity } from '@/sdk/logic-function/timeline/create-timeline-activity';
+export type {
+  CreatedTimelineActivity,
+  CreateTimelineActivityInput,
+} from '@/sdk/logic-function/timeline/create-timeline-activity';
 
 export { kv } from '@/sdk/logic-function/key-value/kv';
 export type { AppKeyValue, AppKeyValueScope } from 'twenty-shared/application';
