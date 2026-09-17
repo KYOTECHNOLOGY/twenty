@@ -19,8 +19,7 @@ import { styled } from '@linaria/react';
 import { plural, t } from '@lingui/core/macro';
 import { isNonEmptyString } from '@sniptt/guards';
 import { isDefined } from 'twenty-shared/utils';
-import { Chip, LinkChip } from 'twenty-ui/data-display';
-import { TooltipPosition } from 'twenty-ui/surfaces';
+import { Chip, LinkChip } from 'twenty-ui/primitives/data-display';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 
 const StyledRowContainer = styled.div`
@@ -192,7 +191,7 @@ export const RecordListRow = ({ recordId }: RecordListRowProps) => {
                   onClick={openRecord}
                   triggerEvent="CLICK"
                   tooltipLabel={overflowChipTooltipLabel}
-                  tooltipPlace={TooltipPosition.Top}
+                  tooltipPlace={'top'}
                   alwaysShowTooltip
                   variant="soft"
                 >
@@ -201,7 +200,7 @@ export const RecordListRow = ({ recordId }: RecordListRowProps) => {
               ) : (
                 <Chip
                   tooltipLabel={overflowChipTooltipLabel}
-                  tooltipPlace={TooltipPosition.Top}
+                  tooltipPlace={'top'}
                   alwaysShowTooltip
                   variant="soft"
                 >

@@ -1,15 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  renderComponentReference,
-  renderTokenReference,
-} from '../render-ui-reference';
+import { renderComponentReference } from '../render-component-reference';
+import { renderTokenReference } from '../render-ui-reference';
 
 describe('renderComponentReference', () => {
   it('escapes attributes and prose while keeping markdown and code intact', () => {
     const reference = renderComponentReference({
       name: 'Example',
-      entryPoint: 'twenty-ui/input',
+      entryPoint: 'twenty-ui/primitives/input',
       slug: 'input/example',
       props: [
         {
@@ -41,10 +39,48 @@ describe('renderComponentReference', () => {
 });
 
 describe('compound component references', () => {
+  it('includes convenience props before compound parts', () => {
+    const reference = renderComponentReference({
+      name: 'Tooltip',
+      entryPoint: 'twenty-ui/primitives/surfaces',
+      slug: 'surfaces/tooltip',
+      props: [
+        {
+          name: 'content',
+          type: 'ReactNode',
+          required: true,
+          defaultValue: null,
+          description: 'Tooltip content.',
+        },
+      ],
+      parts: [
+        {
+          name: 'Popup',
+          props: [
+            {
+              name: 'arrow',
+              type: 'boolean',
+              required: false,
+              defaultValue: 'false',
+              description: 'Show an arrow.',
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(reference).toContain('<ParamField body="content"');
+    expect(reference).toContain('### Tooltip.Popup');
+    expect(reference).toContain('<ParamField body="Popup.arrow"');
+    expect(reference.indexOf('body="content"')).toBeLessThan(
+      reference.indexOf('### Tooltip.Popup'),
+    );
+  });
+
   it('distinguishes identically named props on different parts and retains defaults', () => {
     const reference = renderComponentReference({
       name: 'Menu',
-      entryPoint: 'twenty-ui/surfaces',
+      entryPoint: 'twenty-ui/primitives/surfaces',
       slug: 'surfaces/menu',
       props: [],
       parts: [

@@ -1,3 +1,4 @@
+import { buttonControlsTest } from '@/__stories__/twenty-ui-gallery/utils/buttonControlsTest';
 import { type Meta } from '@storybook/react-vite';
 
 import {
@@ -43,6 +44,7 @@ import {
   tabsReactTest,
 } from '@/__stories__/twenty-ui-gallery/utils/sandboxFailureTests';
 import { FrontComponentRenderer } from '@/host/components/FrontComponentRenderer';
+import { createTooltipSandboxFailureTest } from '@/__stories__/twenty-ui-gallery/utils/createTooltipSandboxFailureTest';
 
 const meta: Meta<typeof FrontComponentRenderer> = {
   title: 'FrontComponent/Twenty UI Gallery',
@@ -251,6 +253,18 @@ export const PopoverPreact: Story = createGalleryStory({
   play: popoverTest,
 });
 
+export const TooltipReact: Story = createGalleryStory({
+  frontComponentBundleName: 'twenty-ui-tooltip',
+  runtime: 'react',
+  play: createTooltipSandboxFailureTest('react'),
+});
+
+export const TooltipPreact: Story = createGalleryStory({
+  frontComponentBundleName: 'twenty-ui-tooltip',
+  runtime: 'preact',
+  play: createTooltipSandboxFailureTest('preact'),
+});
+
 export const MenuReact: Story = createGalleryStory({
   frontComponentBundleName: 'twenty-ui-menu',
   runtime: 'react',
@@ -383,6 +397,18 @@ export const TagControlsPreact: Story = createGalleryStory({
   frontComponentBundleName: 'twenty-ui-tag-controls',
   runtime: 'preact',
   play: tagControlsTest,
+});
+
+export const ButtonControlsReact: Story = createGalleryStory({
+  frontComponentBundleName: 'twenty-ui-button-controls',
+  runtime: 'react',
+  play: buttonControlsTest,
+});
+
+export const ButtonControlsPreact: Story = createGalleryStory({
+  frontComponentBundleName: 'twenty-ui-button-controls',
+  runtime: 'preact',
+  play: buttonControlsTest,
 });
 
 export const AvatarControlsReact: Story = createGalleryStory({

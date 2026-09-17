@@ -1,7 +1,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { type ComponentDoc, type PropItem } from 'react-docgen-typescript';
+import {
+  type ComponentDoc,
+  type ParserOptions,
+  type PropItem,
+} from 'react-docgen-typescript';
 import ts from 'typescript';
 
 import { DESIGN_TOKENS } from '../design-tokens/designTokens';
@@ -67,23 +71,37 @@ const isDeclaredInTwentyUi = (prop: PropItem): boolean =>
     declaration.fileName.startsWith(sourceRoot),
   ) ?? false;
 
-const parser = new DocumentationParser(program, {
+const parserOptions: ParserOptions = {
   shouldExtractLiteralValuesFromEnum: true,
   shouldIncludePropTagMap: true,
   propFilter: (prop) => !isReactNativeAttribute(prop) && !isHiddenProp(prop),
+};
+const parser = new DocumentationParser(program, parserOptions);
+const documentedChildrenParser = new DocumentationParser(program, {
+  ...parserOptions,
+  skipChildrenPropWithoutDoc: false,
 });
 
-const extractProps = (
-  symbol: ts.Symbol,
-  name: string,
-): ComponentDocumentation['props'] => {
+const extractProps = ({
+  symbol,
+  name,
+  propDescriptions = {},
+  propDefaults = {},
+}: {
+  symbol: ts.Symbol;
+  name: string;
+  propDescriptions?: Partial<Record<string, string>>;
+  propDefaults?: Partial<Record<string, string>>;
+}): ComponentDocumentation['props'] => {
   const declaration = symbol.valueDeclaration;
 
   if (!declaration) {
     throw new Error(`Could not find the declaration for ${name}`);
   }
 
-  const parsed: ComponentDoc | null = parser.getComponentInfo(
+  const componentParser =
+    'children' in propDescriptions ? documentedChildrenParser : parser;
+  const parsed: ComponentDoc | null = componentParser.getComponentInfo(
     symbol,
     declaration.getSourceFile(),
     () => name,
@@ -96,11 +114,13 @@ const extractProps = (
   return Object.values(parsed.props)
     .sort((left, right) => left.name.localeCompare(right.name, 'en'))
     .map((prop) => {
-      const description = prop.description.trim();
+      const description = (
+        propDescriptions[prop.name] ?? prop.description
+      ).trim();
 
       if (description.length === 0 && isDeclaredInTwentyUi(prop)) {
         throw new Error(
-          `Missing JSDoc description for ${name}.${prop.name}. Document the prop in its props type.`,
+          `Missing description for ${name}.${prop.name}. Document the prop in its props type or documentation metadata.`,
         );
       }
 
@@ -111,7 +131,9 @@ const extractProps = (
           required: prop.required,
         }),
         required: prop.required,
-        defaultValue: normalizeDocumentationDefaultValue(prop.defaultValue),
+        defaultValue:
+          propDefaults[prop.name] ??
+          normalizeDocumentationDefaultValue(prop.defaultValue),
         description,
       };
     });
@@ -141,11 +163,30 @@ const components: ComponentDocumentation[] = DOCUMENTED_COMPONENTS.map(
       slug: component.slug,
     };
 
-    if (type.getCallSignatures().length > 0) {
-      return { ...metadata, props: extractProps(symbol, component.name) };
-    }
+    const props =
+      type.getCallSignatures().length > 0
+        ? extractProps({
+            symbol,
+            name: component.name,
+            propDescriptions:
+              'propDescriptions' in component
+                ? component.propDescriptions
+                : undefined,
+            propDefaults:
+              'propDefaults' in component ? component.propDefaults : undefined,
+          })
+        : [];
 
-    const parts = type.getProperties().map((part) => {
+    const partNames: readonly string[] | undefined =
+      'parts' in component ? component.parts : undefined;
+    const partPropDescriptions: Partial<
+      Record<string, Partial<Record<string, string>>>
+    > =
+      'partPropDescriptions' in component ? component.partPropDescriptions : {};
+    const componentParts = type
+      .getProperties()
+      .filter((part) => partNames?.includes(part.name) ?? props.length === 0);
+    const parts = componentParts.map((part) => {
       const declaration = part.valueDeclaration;
 
       if (!declaration || !ts.isPropertyAssignment(declaration)) {
@@ -164,15 +205,23 @@ const components: ComponentDocumentation[] = DOCUMENTED_COMPONENTS.map(
 
       return {
         name: part.name,
-        props: extractProps(partSymbol, `${component.name}.${part.name}`),
+        props: extractProps({
+          symbol: partSymbol,
+          name: `${component.name}.${part.name}`,
+          propDescriptions: partPropDescriptions[part.name],
+        }),
       };
     });
 
-    if (parts.length === 0) {
+    if (props.length === 0 && parts.length === 0) {
       throw new Error(`Could not extract parts for ${component.name}`);
     }
 
-    return { ...metadata, props: [], parts };
+    return {
+      ...metadata,
+      props,
+      ...(parts.length > 0 ? { parts } : {}),
+    };
   },
 );
 

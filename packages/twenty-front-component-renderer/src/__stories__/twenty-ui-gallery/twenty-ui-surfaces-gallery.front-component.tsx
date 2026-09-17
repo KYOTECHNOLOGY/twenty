@@ -1,6 +1,6 @@
 import { defineFrontComponent } from 'twenty-sdk/define';
+import { Button } from 'twenty-ui/primitives/input';
 import {
-  AppTooltip,
   Card,
   CardContent,
   CardFooter,
@@ -11,7 +11,8 @@ import {
   ModalFooter,
   ModalHeader,
   OverflowingTextWithTooltip,
-} from 'twenty-ui/surfaces';
+  Tooltip,
+} from 'twenty-ui/primitives/surfaces';
 import { ThemeProvider } from 'twenty-ui/theme-constants';
 
 import {
@@ -21,16 +22,13 @@ import {
 
 const SURFACES_ENTRIES: GalleryEntry[] = [
   {
-    name: 'AppTooltip',
+    name: 'Tooltip',
     node: (
-      <>
-        <span id="gallery-tooltip-anchor">Tooltip anchor</span>
-        <AppTooltip
-          anchorSelect="#gallery-tooltip-anchor"
-          title="Tooltip content"
-          isOpen={true}
-        />
-      </>
+      <Tooltip content="Tooltip content">
+        <span>
+          <Button>Tooltip anchor</Button>
+        </span>
+      </Tooltip>
     ),
   },
   {
@@ -86,14 +84,18 @@ const SURFACES_ENTRIES: GalleryEntry[] = [
 ];
 
 const SurfacesGallery = () => (
-  <ThemeProvider colorScheme="light">
-    <ComponentGallery title="twenty-ui/surfaces" entries={SURFACES_ENTRIES} />
+  <ThemeProvider colorScheme="light" applyToRoot={false}>
+    <ComponentGallery
+      title="twenty-ui/primitives/surfaces"
+      entries={SURFACES_ENTRIES}
+    />
   </ThemeProvider>
 );
 
 export default defineFrontComponent({
   universalIdentifier: 'test-20ui0-0000-0000-0000-000000000105',
   name: 'twenty-ui-surfaces-gallery',
-  description: 'Renders every twenty-ui/surfaces component in the sandbox',
+  description:
+    'Renders every twenty-ui/primitives/surfaces component in the sandbox',
   component: SurfacesGallery,
 });

@@ -39,11 +39,11 @@ import {
   getSendableEmailHandles,
   isDefined,
 } from 'twenty-shared/utils';
-import { Callout } from 'twenty-ui/feedback';
+import { Callout } from 'twenty-ui/primitives/feedback';
 import { IconPlus } from 'twenty-ui/icon';
 import { isNonEmptyString } from '@sniptt/guards';
-import { Button } from 'twenty-ui/input';
-import { MenuItem } from 'twenty-ui/navigation';
+import { Button } from 'twenty-ui/primitives/input';
+import { MenuItem } from 'twenty-ui/primitives/navigation';
 import { useNavigateSettings } from '~/hooks/useNavigateSettings';
 
 type WorkflowEditActionEmailBaseProps = {
@@ -321,11 +321,9 @@ export const WorkflowEditActionEmailBase = ({
               dropdownPlacement="bottom-start"
               clickableComponent={
                 <Button
-                  title={t`Advanced options`}
-                  variant="secondary"
-                  accent="default"
-                  size="small"
-                />
+                  size="sm"
+                  variant="outline"
+                >{t`Advanced options`}</Button>
               }
               dropdownComponents={
                 <DropdownContent
