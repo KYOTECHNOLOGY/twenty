@@ -101,7 +101,8 @@ export class WorkspaceMemberTranspiler {
       userWorkspaceId: userWorkspace.id,
       colorScheme,
       openRecordIn: openRecordIn as OpenRecordIn,
-      uiScale,
+      // Guards against pre-existing rows that predate this field and were never backfilled.
+      uiScale: uiScale ?? 'Default',
       dateFormat: dateFormat as WorkspaceMemberDateFormatEnum,
       locale,
       timeFormat: timeFormat as WorkspaceMemberTimeFormatEnum,
