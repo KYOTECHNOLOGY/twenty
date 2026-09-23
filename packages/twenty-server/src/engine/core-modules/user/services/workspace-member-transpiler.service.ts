@@ -16,11 +16,7 @@ import {
   type WorkspaceMemberTimeFormatEnum,
   type WorkspaceMemberWorkspaceEntity,
 } from 'src/modules/workspace-member/standard-objects/workspace-member.workspace-entity';
-import {
-  FileFolder,
-  ObjectOpenRecordIn,
-  OpenRecordIn
-} from 'twenty-shared/types';
+import { FileFolder, OpenRecordIn } from 'twenty-shared/types';
 
 export type ToWorkspaceMemberDtoArgs = {
   workspaceMemberEntity: WorkspaceMemberWorkspaceEntity;
@@ -104,8 +100,7 @@ export class WorkspaceMemberTranspiler {
       avatarUrl,
       userWorkspaceId: userWorkspace.id,
       colorScheme,
-      openRecordIn:
-        (openRecordIn as OpenRecordIn) ?? ObjectOpenRecordIn.USER_CHOICE,
+      openRecordIn: (openRecordIn as OpenRecordIn) ?? OpenRecordIn.SIDE_PANEL,
       // Guards against pre-existing rows that predate this field and were never backfilled.
       uiScale: uiScale ?? 'Default',
       dateFormat: dateFormat as WorkspaceMemberDateFormatEnum,
